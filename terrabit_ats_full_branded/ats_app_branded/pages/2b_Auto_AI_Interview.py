@@ -3,15 +3,37 @@ from lib import db
 from lib.llm import LLMClient
 from lib.pdf import build_softskills_pdf
 from audio_recorder_streamlit import audio_recorder
-import openai
 
 st.title("🗣️ Auto AI Interview (Voice-led)")
 conn = st.session_state["db_conn"]
 api_key = st.secrets["OPENAI_API_KEY"]
 llm = LLMClient(api_key=api_key, model="gpt-4o", temperature=0)
 ct = st.session_state.get("cost_tracker")
-oai = openai.OpenAI(api_key=api_key)
+# Audio helper that works for OpenAI v1.x and v0.x
+try:
+    from openai import OpenAI
+    _SDK = "v1"
+    oai_client = OpenAI(api_key=api_key)
+except Exception:
+    import openai as _oai
+    _SDK = "v0"
+    _oai.api_key = api_key
+    oai_client = _oai
 
+def whisper_transcribe(file_obj):
+    if _SDK == "v1":
+        return oai_client.audio.transcriptions.create(model="whisper-1", file=file_obj).text
+    else:
+        # v0.x
+        return oai_client.Audio.transcriptions.create(model="whisper-1", file=file_obj)["text"]
+
+def tts_bytes(text: str):
+    if _SDK == "v1":
+        speech = oai_client.audio.speech.create(model="gpt-4o-mini-tts", voice="alloy", input=text)
+        return speech.read()
+    else:
+        # No official TTS in 0.x; skip
+        return b""
 jobs = db.list_jobs(conn)
 if not jobs: st.info("Create a Job first."); st.stop()
 
