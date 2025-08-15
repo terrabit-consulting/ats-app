@@ -17,11 +17,12 @@ def extract_email(text: str) -> str:
     return m.group(0) if m else "Not found"
 
 def extract_name_heuristics(text: str) -> str | None:
-    for _, val in re.findall(r"(?i)(Candidate Name|Name)\s*[:\-–]\s*(.+)", text or ""):
+    text = text or ""
+    for _, val in re.findall(r"(?i)(Candidate Name|Name)\s*[:\-–]\s*(.+)", text):
         name = val.strip().title()
         if 2 <= len(name.split()) <= 4 and len(name) <= 60:
             return name
-    m = re.search(r"(?i)Resume of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})", text or "")
+    m = re.search(r"(?i)Resume of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})", text)
     if m:
         return m.group(1).strip().title()
     return None
