@@ -88,8 +88,7 @@ st.progress(q_idx/len(questions))
 
 def tts(text:str)->bytes:
     try:
-        speech = oai.audio.speech.create(model="gpt-4o-mini-tts", voice="alloy", input=text)
-        audio = speech.read()
+audio = tts_bytes(q)
         if ct: ct.add_tts_cost(len(text), feature="interview_tts")
         return audio
     except Exception as e:
@@ -107,8 +106,7 @@ if st.session_state["auto_running"] and q_idx < len(questions):
             tmp.write(bytes_wav); tmp_path = tmp.name
         with open(tmp_path, "rb") as f:
             try:
-                tr = oai.audio.transcriptions.create(model="whisper-1", file=f)
-                transcript = tr.text.strip()
+               transcript = whisper_transcribe(f)
                 if ct:
                     import wave, contextlib
                     with contextlib.closing(wave.open(tmp_path, "rb")) as w:
