@@ -96,25 +96,44 @@ audio = tts_bytes(q)
 
 if st.session_state["auto_running"] and q_idx < len(questions):
     q = questions[q_idx]
+
+if st.session_state.get("auto_running", False) and q_idx < len(questions):
+    q = questions[q_idx]
     st.markdown(f"### Q{q_idx+1}: {q}")
-    audio = tts(q)
-    if audio: st.audio(audio, format="audio/mp3")
+
+    # Speak the question (SDK v1 only; v0 just shows text)
+    audio = tts_bytes(q)
+    if audio:
+        st.audio(audio, format="audio/mp3")
+    else:
+        st.info("Text-to-speech unavailable in this SDK mode. Please read the question above.")
+
     st.info("Record the candidate's answer, then stop to auto-continue.")
     bytes_wav = audio_recorder(text="Record / Stop", sample_rate=41000, pause_threshold=1.0)
+
     if bytes_wav:
+        import tempfile, os, wave, contextlib
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(bytes_wav); tmp_path = tmp.name
+            tmp.write(bytes_wav)
+            tmp_path = tmp.name
+        # Transcribe with Whisper
         with open(tmp_path, "rb") as f:
             try:
-               transcript = whisper_transcribe(f)
+                transcript = whisper_transcribe(f)
                 if ct:
-                    import wave, contextlib
                     with contextlib.closing(wave.open(tmp_path, "rb")) as w:
-                        dur = w.getnframes()/float(w.getframerate() or 41000)
+                        dur = w.getnframes() / float(w.getframerate() or 41000)
                     ct.add_whisper_cost_from_minutes(dur/60.0, feature="interview_stt")
                 st.session_state["auto_answers"][q_idx] = transcript
                 st.success(f"Transcribed: {transcript[:120]}{'...' if len(transcript)>120 else ''}")
-                st.session_state["q_idx"] += 1; st.rerun()
+                st.session_state["q_idx"] = q_idx + 1
+                st.rerun()
+            except Exception as e:
+                st.error(f"Transcription failed: {e}")
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
             except Exception as e:
                 st.error(f"Transcription failed: {e}")
         try: os.remove(tmp_path)
