@@ -71,25 +71,40 @@ answers = []
 if questions:
     st.write("**Answer by voice or text for each question**")
     for i,q in enumerate(questions,1):
-        st.markdown(f"**Q{i}. {q}**")
-        audio_bytes = audio_recorder(pause_threshold=1.0, sample_rate=41000, text="Record / Stop")
-        text_answer = st.text_area(f"Or type your answer {i}", key=f"ans_text_{i}", height=80)
-        transcript = ""
-        if audio_bytes:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                tmp.write(audio_bytes); tmp_path = tmp.name
-            with open(tmp_path, "rb") as f:
-                try:
-                    transcript = whisper_transcribe(f)
-                    if ct:
-                        import wave, contextlib
-                        with contextlib.closing(wave.open(tmp_path, "rb")) as w:
-                            dur = w.getnframes()/float(w.getframerate() or 41000)
-                        ct.add_whisper_cost_from_minutes(dur/60.0, feature="interview_stt")
-                    st.success(f"Transcribed: {transcript[:120]}{'...' if len(transcript)>120 else ''}")
-                except Exception as e:
-                    st.error(f"Transcription failed: {e}")
-            try: os.remove(tmp_path)
+
+        # inside the loop over questions
+audio_bytes = audio_recorder(pause_threshold=1.0, sample_rate=41000, text="Record / Stop")
+text_answer = st.text_area(f"Or type your answer {i}", key=f"ans_text_{i}", height=80)
+transcript = ""
+
+if audio_bytes:
+    import tempfile, os, wave, contextlib
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+
+    # Transcribe with our helper (works with OpenAI SDK v1 or v0)
+    with open(tmp_path, "rb") as f:
+        try:
+            transcript = whisper_transcribe(f)
+            # Optional: cost tracking for Whisper minutes
+            if ct:
+                with contextlib.closing(wave.open(tmp_path, "rb")) as w:
+                    dur = w.getnframes() / float(w.getframerate() or 41000)
+                ct.add_whisper_cost_from_minutes(dur/60.0, feature="interview_stt")
+            st.success(f"Transcribed: {transcript[:120]}{'...' if len(transcript)>120 else ''}")
+        except Exception as e:
+            st.error(f"Transcription failed: {e}")
+
+    try:
+        os.remove(tmp_path)
+    except Exception:
+        pass
+
+# prefer voice transcript if present, else typed answer
+final_ans = transcript if transcript else text_answer
+answers.append(final_ans)
+     
             except: pass
 
         final_ans = transcript if transcript else text_answer
