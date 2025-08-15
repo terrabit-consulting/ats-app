@@ -4,7 +4,6 @@ from functools import lru_cache
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}")
 BLOCKLIST = {"developer","engineer","resume","cv","india","bangalore","python","java","azure","aws","servers"}
 
-# --- Try to load spaCy lazily; fall back gracefully if missing ---
 @lru_cache
 def _maybe_nlp():
     try:
@@ -40,7 +39,6 @@ def extract_name_spacy(text: str) -> str | None:
     return None
 
 def extract_name_smart(text: str, llm=None) -> str:
-    # Heuristics first, then spaCy if available, then LLM
     name = extract_name_heuristics(text) or extract_name_spacy(text)
     if name:
         return name
