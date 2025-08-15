@@ -29,8 +29,7 @@ def whisper_transcribe(file_obj):
 
 def tts_bytes(text: str):
     if _SDK == "v1":
-        speech = oai_client.audio.speech.create(model="gpt-4o-mini-tts", voice="alloy", input=text)
-        return speech.read()
+        audio = tts_bytes(q)
     else:
         # No official TTS in 0.x; skip
         return b""
@@ -81,8 +80,7 @@ if questions:
                 tmp.write(audio_bytes); tmp_path = tmp.name
             with open(tmp_path, "rb") as f:
                 try:
-                    tr = oai.audio.transcriptions.create(model="whisper-1", file=f)
-                    transcript = tr.text.strip()
+                    transcript = whisper_transcribe(f)
                     if ct:
                         import wave, contextlib
                         with contextlib.closing(wave.open(tmp_path, "rb")) as w:
