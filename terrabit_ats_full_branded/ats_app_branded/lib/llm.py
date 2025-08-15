@@ -1,7 +1,6 @@
-# lib/llm.py
 import time
 
-# Support both OpenAI SDK v1.x and older 0.x
+# Try OpenAI SDK v1.x first, fall back to 0.x
 try:
     from openai import OpenAI  # v1.x
     _SDK = "v1"
@@ -13,24 +12,17 @@ class LLMClient:
     def __init__(self, api_key: str, model: str = "gpt-4o", temperature: float = 0):
         self.model = model
         self.temperature = temperature
-        self.sdk = _SDK
-        if self.sdk == "v1":
-            # v1.x client
+        if _SDK == "v1":
             self.client = OpenAI(api_key=api_key)
         else:
-            # v0.x fallback
             _oai.api_key = api_key
             self.client = _oai
-
-    def chat(self, prompt: str, retries: int = 1):
-        text, _ = self.chat_with_usage(prompt, retries=retries)
-        return text
 
     def chat_with_usage(self, prompt: str, retries: int = 1):
         err = None
         for _ in range(retries + 1):
             try:
-                if self.sdk == "v1":
+                if _SDK == "v1":
                     r = self.client.chat.completions.create(
                         model=self.model,
                         messages=[{"role": "user", "content": prompt}],
@@ -62,3 +54,7 @@ class LLMClient:
                 err = e
                 time.sleep(0.6)
         raise RuntimeError(err)
+
+    def chat(self, prompt: str, retries: int = 1):
+        text, _ = self.chat_with_usage(prompt, retries=retries)
+        return text
